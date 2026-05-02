@@ -2,7 +2,7 @@
 
 Course workspace for the Amdocs AI-Augmented Software Engineering program.
 
-## Structure
+## Contents
 
 - lectures
 - homework
@@ -18,16 +18,32 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-## Workflow
+## Daily workflow
 
-Start:
+Start work:
 ```bash
+cd C:\dev\amdocs-ai-course
+.venv\Scripts\activate
 git pull
 ```
 
-End:
+End work:
 ```bash
 git add .
-git commit -m "update"
+git commit -m "your message"
 git push
 ```
+
+## Sync between laptops
+
+This repository is used on both my personal laptop and Amdocs laptop.
+
+- GitHub syncs the project files
+- `requirements.txt` syncs Python dependencies
+- each laptop has its own local `.venv`
+
+## Notes
+
+- Do not commit `.venv`
+- Do not commit `__pycache__`
+- Keep notebooks, homework, and notes organized by folder
