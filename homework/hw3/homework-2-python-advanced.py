@@ -1,5 +1,7 @@
 ## Re'em Mor
-## ID: 311117774
+## ID:311117774
+## Lecture 3 - Python Advanced Homework
+## Date of submission: 2026-05-05
 
 
 # QUESTION1 + QUESTION2

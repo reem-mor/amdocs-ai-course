@@ -1,90 +1,132 @@
 ## Re'em Mor
-## 311117774
+## ID:311117774
+## Lecture 2 - Python Intro Homework
+## Date of submission: 2026-05-05
 
 
-# QUESTION1
 
-my_info = ["Reem", "Mor", 25, "0521234567"]
+# QUESTION 1
+
+my_info = ["Reem", "Mor", 32, "0526775754"]
 
 for item in my_info:
     print(item)
 
-# QUESTION2
+
+# QUESTION 2
 
 my_info_dict = {
     ("name", "last_name"): "Reem Mor",
     "age": 32,
-    "phone number": "0526775754",
+    "phone number": "05267757547"
 }
 
 print(my_info_dict)
-# Question 3
 
 
+# QUESTION 3
+
+# Return an error if the lists are not the same length.
 def max_list(lst1, lst2):
     if len(lst1) != len(lst2):
         raise ValueError("Lists must be of the same length")
 
-    return [max(a, b) for a, b in zip(lst1, lst2)]
+    new_list = []
+    for a, b in zip(lst1, lst2):
+        new_list.append(max(a, b))
+
+    return new_list
 
 
-# Question 4
+lst1 = [1, 2, 3, 4, 5]
+lst2 = [5, 4, 3, 2, 1]
+
+print(max_list(lst1, lst2))
 
 
-def count_even_odd(values):
-    even_count = 0
-    odd_count = 0
+# QUESTION 4
 
-    for item in values:
-        if isinstance(item, str):
-            print("It's a string!")
-            return  # immediately stop (cleaner than break + flags)
+# Stop the program if a string appears in the list.
+values = [1, 2, 3, 4, 5, 6, 7, 8, 9]
 
-        if item % 2 == 0:
-            even_count += 1
-        else:
-            odd_count += 1
+even_count = 0
+odd_count = 0
+found_string = False
 
+for item in values:
+    if isinstance(item, str):
+        print("It's a string!!!")
+        even_count = 0
+        odd_count = 0
+        found_string = True
+        break
+
+    if item % 2 == 0:
+        even_count += 1
+    else:
+        odd_count += 1
+
+if not found_string:
     print(f"Number of even numbers: {even_count}")
     print(f"Number of odd numbers: {odd_count}")
 
 
-# Tests
-count_even_odd([1, 2, 3, 4, 5, 6, 7, 8, 9])
-count_even_odd([1, 2, 3, 4, "Oops", 6, 7, 8, 9])
+# Extra example with a string inside the list
+values = [1, 2, 3, 4, "Oops", 6, 7, 8, 9]
 
-# Question 5
+even_count = 0
+odd_count = 0
+found_string = False
+
+for item in values:
+    if isinstance(item, str):
+        print("It's a string!!!")
+        even_count = 0
+        odd_count = 0
+        found_string = True
+        break
+
+    if item % 2 == 0:
+        even_count += 1
+    else:
+        odd_count += 1
+
+if not found_string:
+    print(f"Number of even numbers: {even_count}")
+    print(f"Number of odd numbers: {odd_count}")
 
 
-def generate_formula_dict(n):
-    result_dict = {}
+# QUESTION 5
+
+def generate_dictionary(n):
+    result = {}
+
     for x in range(1, n + 1):
-        result_dict[x] = x + 3
-    return result_dict
+        result[x] = x + 3
+
+    return result
 
 
-n = 5
-print(generate_formula_dict(n))
+print(generate_dictionary(5))
 
-# Question 6
+
+# QUESTION 6
 
 dic1 = {1: 10, 2: 20}
 dic2 = {3: 30, 4: 40}
 dic3 = {5: 50, 6: 60}
 
-# Combining using the built-in update method
-result_dict = {}
-result_dict.update(dic1)
-result_dict.update(dic2)
-result_dict.update(dic3)
+new_dict = {}
+new_dict.update(dic1)
+new_dict.update(dic2)
+new_dict.update(dic3)
 
-print(result_dict)
+print(new_dict)
 
 
-# Question 7
+# QUESTION 7
 
-# QUESTION6
-
+# Ignore spaces when counting characters.
 def count_characters(text):
     char_count = {}
 
@@ -95,66 +137,60 @@ def count_characters(text):
     return char_count
 
 
-result = count_characters("HANNA")
-print(result)
-
-# Question 8
-
-def merge_and_sum(d1: dict, d2: dict) -> dict:
-    result = d1.copy()  # avoid mutating original
-
-    for key, value in d2.items():
-        result[key] = result.get(key, 0) + value
-
-    return result
+print(count_characters(" HANNA"))
 
 
-# Example
+# QUESTION 8
+
+# Add values for keys that appear in both dictionaries.
 d1 = {'a': 100, 'b': 200, 'c': 300}
 d2 = {'a': 300, 'b': 200, 'd': 400}
 
-output = merge_and_sum(d1, d2)
-print(output)
+combined_dict = {}
 
-# Question 9
+for key in d1:
+    combined_dict[key] = d1[key]
 
+for key in d2:
+    if key in combined_dict:
+        combined_dict[key] += d2[key]
+    else:
+        combined_dict[key] = d2[key]
 
-def unique_list(numbers):
-    new_list = []
+print(combined_dict)
+    
+# QUESTION 9
 
-    for item in numbers:
-        if item not in new_list:
-            new_list.append(item)
+# Keep only the first appearance of each value.
+def unique_list(items):
+    unique_items = []
 
-    return new_list
+    for item in items:
+        if item not in unique_items:
+            unique_items.append(item)
+
+    return unique_items
 
 
 print(unique_list([1, 2, 3, 3, 3, 3, 4, 5]))
 
-#Question 10
 
-def print_pattern(n: int = 8):
-    for i in range(1, n + 1):
-        for j in range(1, i + 1):
-            print(j, end="")
-        print()  # new line
+# QUESTION 10
+
+# Use a nested loop to print numbers from 1 up to the current row.
+for i in range(1, 9):
+    for j in range(1, i + 1):
+        print(j, end="")
+    print()
 
 
-# Example
-print_pattern()
+# QUESTION 11
 
-#Question 11
-
-def print_custom_star_pattern():
-    # Defining the structure using conditional logic
-    for row in range(7):
-        if row == 0 or row == 6:
-            print("****")
-        elif row == 1 or row == 2:
-            print("*")
-        elif row == 3:
-            print("  ***")
-        else:
-            print("     *")
-
-print_custom_star_pattern()
+# Print the pattern line by line exactly as shown in the exercise.
+print("****")
+print("*")
+print("*")
+print(" ***")
+print("    *")
+print("    *")
+print("****")
