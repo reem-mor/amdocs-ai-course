@@ -1,0 +1,12 @@
+.env
+__pycache__/
+*.pyc
+*.pyo
+knowledge_base/faiss_index/
+*.egg-info/
+.DS_Store
+venv/
+.venv/
+node_modules/
+*.faiss
+*.pkl
