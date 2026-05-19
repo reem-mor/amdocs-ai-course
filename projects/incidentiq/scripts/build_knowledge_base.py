@@ -113,6 +113,52 @@ def format_sop_chunk(sop: dict[str, Any]) -> str:
     return " ".join(part for part in parts if part)
 
 
+def format_reference_chunk(ref: dict[str, Any]) -> str:
+    """Format an external reference document into a single rich, readable paragraph.
+
+    References are curated summaries of public SRE/post-mortem material (Google SRE
+    Book, AWS Well-Architected, CNCF, Confluent, etc.). They have a different shape
+    than incidents/SOPs: no triage/resolution steps, but include a `content` body,
+    optional `mttr_impact`, and a list of `key_concepts`.
+    """
+    ref_id: str = ref["id"]
+    title: str = ref["title"]
+    source: str = ref.get("source", "Unknown source")
+    category: str = ref.get("category", "Reference")
+    content: str = ref.get("content", "").strip()
+    mttr_impact: str = ref.get("mttr_impact", "").strip()
+    key_concepts: list[str] = ref.get("key_concepts", [])
+    tags: list[str] = ref.get("tags", [])
+
+    concepts_str: str = ", ".join(key_concepts) if key_concepts else "none"
+
+    parts: list[str] = [
+        f"Reference {ref_id} [{category}]: {title}.",
+        f"Source: {source}.",
+        content if content else "",
+        f"MTTR Impact: {mttr_impact}." if mttr_impact else "",
+        f"Key Concepts: {concepts_str}.",
+        f"Tags: {_format_tags(tags)}.",
+    ]
+    return " ".join(part for part in parts if part)
+
+
+def _classify_document(doc: dict[str, Any]) -> str:
+    """Return the document type tag for `doc`: 'incident', 'reference', or 'sop'.
+
+    Detection order matters: an explicit `document_type` field wins; otherwise we
+    fall back to legacy shape detection — anything with a `severity` field is an
+    incident, anything else is an SOP. This keeps the original 60-document corpus
+    working unchanged while admitting the new reference shape.
+    """
+    explicit: str | None = doc.get("document_type")
+    if explicit in {"incident", "reference", "sop"}:
+        return explicit
+    if "severity" in doc:
+        return "incident"
+    return "sop"
+
+
 def _split_sentences(text: str) -> list[str]:
     """Split `text` into sentences using a simple `[.!?]` boundary heuristic."""
     pieces: list[str] = _SENTENCE_SPLIT_RE.split(text.strip())
@@ -195,15 +241,20 @@ def build_index(documents: list[dict[str, Any]], output_path: Path) -> None:
     chunks: list[str] = []
 
     for doc in documents:
-        is_incident: bool = "severity" in doc
-        formatted: str = (
-            format_incident_chunk(doc) if is_incident else format_sop_chunk(doc)
-        )
+        doc_type: str = _classify_document(doc)
+        if doc_type == "incident":
+            formatted: str = format_incident_chunk(doc)
+        elif doc_type == "reference":
+            formatted = format_reference_chunk(doc)
+        else:
+            formatted = format_sop_chunk(doc)
+
         doc_chunks: list[str] = chunk_text(formatted, max_tokens=512)
         if not doc_chunks:
             _logger.warning("Skipping document %s — produced 0 chunks", doc.get("id"))
             continue
 
+        default_category: str = "SOP" if doc_type == "sop" else "Reference"
         for chunk_index, chunk in enumerate(doc_chunks):
             chunks.append(chunk)
             metadata.append(
@@ -211,9 +262,9 @@ def build_index(documents: list[dict[str, Any]], output_path: Path) -> None:
                     "id": doc["id"],
                     "title": doc.get("title", ""),
                     "severity": doc.get("severity", "N/A"),
-                    "category": doc.get("category", "SOP"),
+                    "category": doc.get("category", default_category),
                     "tags": list(doc.get("tags", [])),
-                    "document_type": "incident" if is_incident else "sop",
+                    "document_type": doc_type,
                     "chunk_index": chunk_index,
                     "chunk_text": chunk,
                 }
