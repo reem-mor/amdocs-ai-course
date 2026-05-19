@@ -10,3 +10,5 @@ venv/
 node_modules/
 *.faiss
 *.pkl
+
+*.log
