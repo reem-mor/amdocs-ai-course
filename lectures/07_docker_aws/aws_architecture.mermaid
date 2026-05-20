@@ -1,0 +1,162 @@
+    %% ============================================================
+    %% DIAGRAM 1 — AWS Production Architecture
+    %% ============================================================
+    flowchart TD
+        User(["👤 Users"])
+        Dev(["👨‍💻 Developer"])
+        GH(["📦 GitHub / CI"])
+
+        subgraph DNS_CDN["🌐 Edge Layer"]
+            direction LR
+            R53["Route 53 — DNS Routing"]
+            CF["CloudFront — CDN + Cache"]
+        end
+
+        subgraph REGISTRY["📦 Container Registry"]
+            ECR["ECR — Docker Images"]
+        end
+
+        subgraph VPC["☁️ VPC  10.0.0.0/16"]
+            direction TB
+
+            subgraph PUB["Public Subnets — AZ-A & AZ-B"]
+                ALB["Application Load Balancer"]
+            end
+
+            subgraph PRIV_APP["Private Subnets — App Layer"]
+                direction LR
+                ECS_A["ECS Fargate — AZ-A"]
+                ECS_B["ECS Fargate — AZ-B"]
+            end
+
+            subgraph PRIV_DATA["Private Subnets — Data Layer"]
+                direction LR
+                RDS_P[("RDS Primary — PostgreSQL AZ-A")]
+                RDS_S[("RDS Standby — Multi-AZ AZ-B")]
+                CACHE["ElastiCache — Redis"]
+            end
+        end
+
+        subgraph STORAGE["🪣 Storage"]
+            S3["S3 Bucket — Assets & Backups"]
+        end
+
+        subgraph OPS["📊 Observability"]
+            CW["CloudWatch — Logs & Metrics"]
+            TRAIL["CloudTrail — Audit Log"]
+        end
+
+        subgraph SEC["🔐 Security"]
+            IAM["IAM — Roles & Policies"]
+            SM["Secrets Manager"]
+        end
+
+        User -->|HTTPS| R53
+        R53 --> CF
+        CF -->|Cache miss| ALB
+        CF -.->|Static assets| S3
+        ALB --> ECS_A
+        ALB --> ECS_B
+        ECR -->|Pull image| ECS_A
+        ECR -->|Pull image| ECS_B
+        Dev --> GH
+        GH -->|docker push| ECR
+        ECS_A -->|Read/Write| RDS_P
+        ECS_B -->|Read/Write| RDS_P
+        RDS_P -.->|Sync / Failover| RDS_S
+        ECS_A -->|Cache| CACHE
+        ECS_B -->|Cache| CACHE
+        ECS_A -->|Upload files| S3
+        ECS_B -->|Upload files| S3
+        ECS_A -->|Logs & metrics| CW
+        ECS_B -->|Logs & metrics| CW
+        ALB -->|Access logs| CW
+        IAM -->|Task Role| ECS_A
+        IAM -->|Task Role| ECS_B
+        SM -->|Inject secrets| ECS_A
+        SM -->|Inject secrets| ECS_B
+
+
+    %% ============================================================
+    %% DIAGRAM 2 — Docker → ECR → ECS Deployment Flow
+    %% ============================================================
+    flowchart TD
+        A(["👨‍💻 Developer — local machine"])
+
+        subgraph LOCAL["Local Development"]
+            B["Write code + Dockerfile"]
+            C["docker build -t my-app ."]
+            D["docker run -p 8080:8080 my-app  — test locally"]
+        end
+
+        subgraph CI["CI/CD Pipeline — GitHub Actions"]
+            E["git push → trigger pipeline"]
+            F["docker build -t my-app:SHA ."]
+            G["docker scan — CVE security check"]
+            H["Run tests inside container"]
+        end
+
+        subgraph PUSH["Push to ECR"]
+            I["aws ecr get-login-password | docker login"]
+            J["docker tag my-app:SHA → ECR_URL/my-app:SHA"]
+            K["docker push ECR_URL/my-app:SHA"]
+        end
+
+        subgraph DEPLOY["Deploy to ECS"]
+            L["Update Task Definition — new image URI"]
+            M["aws ecs update-service --force-new-deployment"]
+            N["Rolling Update — ECS replaces old tasks one at a time"]
+            O{"Health Check OK?"}
+            P["Deployment Complete"]
+            Q["Auto Rollback to previous version"]
+        end
+
+        subgraph MONITOR["Post-Deploy Monitoring"]
+            R["CloudWatch Logs & Metrics"]
+            S["Alarms → SNS → Email/Slack"]
+        end
+
+        A --> B --> C --> D
+        D -->|"looks good"| E --> F --> G -->|"clean"| H -->|"tests pass"| I
+        I --> J --> K --> L --> M --> N --> O
+        O -->|yes| P --> R --> S
+        O -->|no| Q
+
+
+    %% ============================================================
+    %% DIAGRAM 3 — IAM & Security Model
+    %% ============================================================
+    flowchart TD
+        ROOT["Root Account — MFA required — Never use daily"]
+
+        subgraph IAM_LAYER["IAM Structure"]
+            subgraph ADMIN["Admin Group"]
+                ADMIN_USER["Admin User + MFA + CLI keys"]
+                ADMIN_POL["AdministratorAccess Policy"]
+            end
+            subgraph DEV_GRP["Developers Group"]
+                DEV_USER["Dev User"]
+                DEV_POL["Dev Policy: EC2 read, S3 rw, ECR push, ECS deploy"]
+            end
+            subgraph READONLY["ReadOnly Group"]
+                RO_USER["Viewer User"]
+                RO_POL["ReadOnlyAccess Policy"]
+            end
+        end
+
+        subgraph ROLES["Service Roles — No hardcoded keys!"]
+            ECS_ROLE["ECS Task Role: S3 rw, Secrets Manager read, CW logs"]
+            EC2_ROLE["EC2 Instance Role: ECR pull, S3 read, SSM"]
+            CICD_ROLE["CI/CD Role: ECR push, ECS update-service"]
+        end
+
+        ROOT -->|"Step 1 — create"| ADMIN_USER
+        ADMIN_USER --> ADMIN_POL
+        DEV_USER --> DEV_POL
+        RO_USER --> RO_POL
+        ADMIN_USER -.->|assume role| ECS_ROLE
+        ADMIN_USER -.->|assume role| CICD_ROLE
+        DEV_USER -.->|assume role| CICD_ROLE
+        ECS_ROLE -->|attached to| ECS["ECS Tasks (containers)"]
+        EC2_ROLE -->|attached to| EC2["EC2 Instances"]
+        CICD_ROLE -->|assumed by| CICD["GitHub Actions CI/CD"]

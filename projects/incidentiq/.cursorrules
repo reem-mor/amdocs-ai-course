@@ -1,0 +1,17 @@
+# IncidentIQ — Cursor Rules
+
+- Project: IncidentIQ RAG Application
+- Working directory: C:\dev\amdocs-ai-course\projects\incidentiq\
+- Always use pathlib.Path for ALL file paths (Windows compatible)
+- Never hardcode secrets — use .env via pydantic-settings only
+- Type hints required on every function and method signature
+- Docstrings required on every class and public method
+- No print() anywhere in production code — use logger exclusively
+- No bare except: — always catch specific exceptions
+- No magic numbers — use constants from config.py
+- Async for all I/O-bound operations (LLM calls, file reads)
+- FAISS index path: knowledge_base/faiss_index/
+- Embedding model: all-MiniLM-L6-v2
+- LLM: OpenAI gpt-4o-mini via async client
+- After each phase verify code is complete before continuing
+- Stack: FastAPI + FAISS + sentence-transformers + OpenAI + Docker
