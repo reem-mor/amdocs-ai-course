@@ -19,15 +19,17 @@ _ENV_FILE: Path = _PROJECT_ROOT / ".env"
 class Settings(BaseSettings):
     """Strongly-typed application settings sourced from environment variables and `.env`.
 
-    All fields are validated by Pydantic V2 at instantiation time. Secrets (e.g.
-    `OPENAI_API_KEY`) are never logged. The `.env` file at the project root is
-    loaded automatically; explicit environment variables take precedence over
-    file values.
+    All fields are validated by Pydantic V2 at instantiation time. Secrets are
+    never logged. The `.env` file at the project root is loaded automatically;
+    explicit environment variables take precedence over file values.
     """
 
-    OPENAI_API_KEY: str = Field(
-        ...,
-        description="OpenAI API key used for chat completions. Required.",
+    OPENAI_API_KEY: str | None = Field(
+        default=None,
+        description=(
+            "OpenAI API key used for chat completions. Required only when the "
+            "LLM client is initialized, not while building the local FAISS index."
+        ),
     )
     OPENAI_MODEL: str = Field(
         default="gpt-4o-mini",
@@ -44,18 +46,26 @@ class Settings(BaseSettings):
     TOP_K_RESULTS: int = Field(
         default=5,
         ge=1,
+        le=20,
         description="Number of top-K nearest neighbors retrieved per query.",
     )
     MAX_TOKENS: int = Field(
         default=1000,
-        ge=1,
+        ge=128,
+        le=4096,
         description="Maximum number of tokens generated per LLM completion.",
     )
     APP_PORT: int = Field(
         default=8000,
         ge=1,
         le=65535,
-        description="TCP port on which the FastAPI server listens.",
+        description="Default local TCP port. Hosted platforms should use PORT.",
+    )
+    REQUEST_TIMEOUT_SECONDS: float = Field(
+        default=45.0,
+        ge=5.0,
+        le=120.0,
+        description="Timeout for outbound OpenAI requests.",
     )
 
     model_config = SettingsConfigDict(
@@ -70,6 +80,17 @@ class Settings(BaseSettings):
         """Return the absolute `Path` to the FAISS index directory."""
         raw = Path(self.FAISS_INDEX_PATH)
         return raw if raw.is_absolute() else _PROJECT_ROOT / raw
+
+    @property
+    def openai_api_key_required(self) -> str:
+        """Return a validated OpenAI API key for runtime LLM calls."""
+        key = (self.OPENAI_API_KEY or "").strip()
+        if not key or key == "your_openai_api_key_here":
+            raise RuntimeError(
+                "OPENAI_API_KEY is required for runtime query generation. "
+                "Set it in your environment or deployment secret manager."
+            )
+        return key
 
 
 @lru_cache(maxsize=1)

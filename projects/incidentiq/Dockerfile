@@ -17,12 +17,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Pre-build the FAISS knowledge base inside the image
-# This means the index is baked in — no runtime build needed
-# OPENAI_API_KEY is injected inline (single-RUN scope only) to satisfy
-# Pydantic Settings validation. The embedder uses sentence-transformers,
-# not OpenAI — so this placeholder never reaches a real API call.
-# It is NOT persisted as an image ENV layer; the real key is supplied
-# at runtime via --env-file.
 RUN OPENAI_API_KEY=build-time-placeholder-not-a-secret \
     python scripts/build_knowledge_base.py
 
@@ -31,16 +25,16 @@ EXPOSE 8000
 
 # Docker health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -fsS http://127.0.0.1:${PORT:-8000}/health || exit 1
 
 # Never run as root in production
 RUN adduser --disabled-password --gecos "" appuser
 USER appuser
 
-# Environment defaults (secrets passed at runtime via --env-file)
+# Environment defaults
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PORT=8000
 
 # Launch application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
