@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: incidentiq
+    env: docker
+    plan: free
+    rootDir: projects/incidentiq
+    autoDeploy: true
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
